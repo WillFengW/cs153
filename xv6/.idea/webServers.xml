@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="d75552bc-9f6d-45a9-ad01-2161c9fbe025" name="CS153">
+        <fileTransfer rootFolder="/home/csmajs/wfeng026" accessType="SFTP" host="sledge.cs.ucr.edu" port="22" sshConfigId="e14a52d2-8ddb-4fae-80bf-5942ae8932b7" sshConfig="wfeng026@sledge.cs.ucr.edu:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
