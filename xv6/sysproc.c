@@ -14,14 +14,14 @@ sys_fork(void)
 }
 
 int
-sys_exit(void) //a  argint?
+sys_exit(void) // original exit
 {
     exit();
     return 0;  // not reached
 }
 
 int
-sys_exitNew(void) //a  argint?
+sys_exitNew(void) // new exit with status, use argint to get the argument just like sys_kill
 {
     int status;
 
@@ -32,16 +32,17 @@ sys_exitNew(void) //a  argint?
 }
 
 int
-sys_wait(void) //b argptr?
+sys_wait(void) // original wait
 {
     return wait();
 }
 
 int
-sys_waitNew(void) //b argptr?
+sys_waitNew(void) // new wait with status, use argint to get the argument
 {
     int *status;
-    argptr(0, (void*)&status, sizeof(status));
+    if(argptr(0, (void*)&status, sizeof(status)) < 0)
+        return -1;
     return waitNew(status);
 }
 
@@ -115,15 +116,15 @@ sys_waitpid(void) {
     int options = 0;
     int* status;
 
-    // if argint?
+    // if argint, 1st argument
     if (argint(0, &pidArg) < 0) {
         return -1;
     }
-    // if argptr?
+    // if argptr, 2nd argument
     if (argptr(1, (void*)&status, sizeof(status)) < 0) {
         return -1;
     }
-    // return waitpid?
+    // return waitpid
     //argint(0, &pidArg);
     //argptr(0, (void*)&status, sizeof(status));
     return waitpid(pidArg, status, options);

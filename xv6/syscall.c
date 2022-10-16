@@ -103,9 +103,9 @@ extern int sys_sleep(void);
 extern int sys_unlink(void);
 extern int sys_wait(void); //b
 extern int sys_waitNew(void); //b
+extern int sys_waitpid(void); //c
 extern int sys_write(void);
 extern int sys_uptime(void);
-extern int sys_waitpid(void); //c
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -113,6 +113,7 @@ static int (*syscalls[])(void) = {
 [SYS_exitNew]    sys_exitNew,
 [SYS_wait]    sys_wait,
 [SYS_waitNew]    sys_waitNew,
+[SYS_waitpid]   sys_waitpid,
 [SYS_pipe]    sys_pipe,
 [SYS_read]    sys_read,
 [SYS_kill]    sys_kill,
@@ -131,7 +132,6 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_waitpid]   sys_waitpid,
 };
 
 void

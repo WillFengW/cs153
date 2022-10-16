@@ -306,7 +306,7 @@ exitNew(int status) //a
 
     // Jump into the scheduler, never to return.
     curproc->state = ZOMBIE;
-    curproc->exitStatus = status;
+    curproc->exitStatus = status;  // assign status into structure
     sched();
     panic("zombie exit");
 }
@@ -383,9 +383,7 @@ waitNew(int *status) //b
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        if (status) {
-            *status = p->exitStatus;
-        }
+        *status = p->exitStatus;  // read status from p and assign 0 to p
         p->exitStatus = 0;
         release(&ptable.lock);
         return pid;
@@ -416,7 +414,7 @@ waitpid(int pidArg, int *status, int options) //c option?
         // Scan through table looking for exited children.
         havekids = 0;
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-            if(p->pid != pidArg)
+            if(p->pid != pidArg) // if 2 pid matched, look for status
                 continue;
             havekids = 1;
             if(p->state == ZOMBIE){
@@ -430,9 +428,7 @@ waitpid(int pidArg, int *status, int options) //c option?
                 p->name[0] = 0;
                 p->killed = 0;
                 p->state = UNUSED;
-                if (status) {
-                    *status = p->exitStatus;
-                }
+                *status = p->exitStatus;
                 p->exitStatus = 0;
                 release(&ptable.lock);
                 return pidArg;
