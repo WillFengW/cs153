@@ -112,6 +112,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->prior = 10;   // set initial priority to 10 as the test program said
   return p;
 }
 
@@ -307,7 +308,14 @@ exitNew(int status) //a
     // Jump into the scheduler, never to return.
     curproc->state = ZOMBIE;
     curproc->exitStatus = status;  // assign status into structure
+    curproc->T_finish = ticks;     // get the finishing time
+    int turnaround = curproc->T_finish - curproc->T_start; // compute turnaround time
+
+    cprintf("Turnaround Time is: %d\n", turnaround);  // print turnaround time
+    cprintf("Waiting time is: %d\n", turnaround - curproc->burst); // compute and print waiting time
     sched();
+
+
     panic("zombie exit");
 }
 
@@ -468,24 +476,42 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    struct proc *curr = ptable.proc;  //curr proc, initializing to first proc
+    int highest = curr->prior;  //highest priority, initializing to first proc
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE || p == curr) //if not runnable or if it's the first proc, skip
         continue;
+
+      if(p->prior < highest) {  // check current prior with highest
+          highest = p->prior;   // assign higher(lower value) prior to highest
+          curr->prior--;        // decrease the previous process's prior
+          curr = p;             // assign current process to curr
+      } else {
+          p->prior--;           // decrease the current process's prior because it has lower prior (higher value)
+      }
+
+    }
+
+      if (curr->prior < 31) {
+          curr->prior++;         //"When it runs, decrease it (increase its value)."
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+      curr->burst++;             // burst time
+      c->proc = curr;
+      switchuvm(curr);
+      curr->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
+      swtch(&(c->scheduler), curr->context);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
-    }
+
     release(&ptable.lock);
 
   }
@@ -667,4 +693,10 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int setPrior(int priority) {    // set prior into structure
+    struct proc *curproc = myproc();
+    curproc->prior = priority;
+    return 0;
 }

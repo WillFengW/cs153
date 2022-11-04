@@ -50,6 +50,10 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int exitStatus;              // status
+  int prior;                   // priority value
+  int T_start;                 // starting time
+  int T_finish;                // finishing time
+  int burst;                   // burst time
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -110,5 +110,7 @@ exec(char *path, char **argv)
     iunlockput(ip);
     end_op();
   }
+
+  curproc->T_start = ticks;  // set starting time
   return -1;
 }

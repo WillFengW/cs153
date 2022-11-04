@@ -23,3 +23,4 @@
 #define SYS_waitpid  22
 #define SYS_waitNew  23
 #define SYS_exitNew  24
+#define SYS_setPrior 25
