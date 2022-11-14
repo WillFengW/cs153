@@ -21,6 +21,7 @@ exec(char *path, char **argv)
 
   begin_op();
 
+  curproc->T_start = ticks;  // set starting time
   if((ip = namei(path)) == 0){
     end_op();
     cprintf("exec: fail\n");
@@ -111,6 +112,6 @@ exec(char *path, char **argv)
     end_op();
   }
 
-  curproc->T_start = ticks;  // set starting time
+
   return -1;
 }

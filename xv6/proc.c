@@ -189,7 +189,7 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
-
+  // curproc->T_start = ticks;  // set starting time
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -277,6 +277,7 @@ exitNew(int status) //a
 
     if(curproc == initproc)
         panic("init exiting");
+    curproc->T_finish = ticks;     // get the finishing time
 
     // Close all open files.
     for(fd = 0; fd < NOFILE; fd++){
@@ -308,9 +309,11 @@ exitNew(int status) //a
     // Jump into the scheduler, never to return.
     curproc->state = ZOMBIE;
     curproc->exitStatus = status;  // assign status into structure
-    curproc->T_finish = ticks;     // get the finishing time
-    int turnaround = curproc->T_finish - curproc->T_start; // compute turnaround time
 
+    int turnaround = curproc->T_finish - curproc->T_start; // compute turnaround time
+    cprintf("T_start: %d\n", curproc->T_start);
+    cprintf("T_finish: %d\n", curproc->T_finish);
+    cprintf("burst time: %d\n", curproc->burst);
     cprintf("Turnaround Time is: %d\n", turnaround);  // print turnaround time
     cprintf("Waiting time is: %d\n", turnaround - curproc->burst); // compute and print waiting time
     sched();
@@ -500,11 +503,11 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      curr->burst++;             // burst time
+
       c->proc = curr;
       switchuvm(curr);
       curr->state = RUNNING;
-
+      curr->burst++;             // burst time
       swtch(&(c->scheduler), curr->context);
       switchkvm();
 
