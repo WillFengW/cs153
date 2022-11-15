@@ -47,18 +47,30 @@ index 82fb982..107c73e 100644
  // swtch.S
  void            swtch(struct context**, struct context*);
 diff --git a/exec.c b/exec.c
-index b40134f..42bb642 100644
+index b40134f..cdcc2c3 100644
 --- a/exec.c
 +++ b/exec.c
-@@ -21,6 +21,7 @@ exec(char *path, char **argv)
- 
+@@ -18,9 +18,10 @@ exec(char *path, char **argv)
+   struct proghdr ph;
+   pde_t *pgdir, *oldpgdir;
+   struct proc *curproc = myproc();
+-
++  curproc->T_start = ticks;  // set starting time
    begin_op();
  
-+  curproc->T_start = ticks;  // set starting time
++
    if((ip = namei(path)) == 0){
      end_op();
      cprintf("exec: fail\n");
-@@ -110,5 +111,7 @@ exec(char *path, char **argv)
+@@ -99,6 +100,7 @@ exec(char *path, char **argv)
+   curproc->sz = sz;
+   curproc->tf->eip = elf.entry;  // main
+   curproc->tf->esp = sp;
++
+   switchuvm(curproc);
+   freevm(oldpgdir);
+   return 0;
+@@ -110,5 +112,7 @@ exec(char *path, char **argv)
      iunlockput(ip);
      end_op();
    }
@@ -67,27 +79,47 @@ index b40134f..42bb642 100644
    return -1;
  }
 diff --git a/proc.c b/proc.c
-index 806b1b1..e3748fa 100644
+index 806b1b1..295030d 100644
 --- a/proc.c
 +++ b/proc.c
-@@ -112,6 +112,7 @@ found:
+@@ -112,6 +112,8 @@ found:
    memset(p->context, 0, sizeof *p->context);
    p->context->eip = (uint)forkret;
  
-+  p->prior = 10;   // set initial priority to 10 as the test program said
++  //p->prior = 10;   // set initial priority to 10 as the test program said
++  //p->T_start = ticks;
    return p;
  }
  
-@@ -188,7 +189,7 @@ fork(void)
+@@ -124,7 +126,7 @@ userinit(void)
+   extern char _binary_initcode_start[], _binary_initcode_size[];
+ 
+   p = allocproc();
+-  
++
+   initproc = p;
+   if((p->pgdir = setupkvm()) == 0)
+     panic("userinit: out of memory?");
+@@ -183,7 +185,7 @@ fork(void)
+   int i, pid;
+   struct proc *np;
+   struct proc *curproc = myproc();
+-
++  //curproc->T_start = ticks;
+   // Allocate process.
    if((np = allocproc()) == 0){
      return -1;
-   }
+@@ -199,7 +201,8 @@ fork(void)
+   np->sz = curproc->sz;
+   np->parent = curproc;
+   *np->tf = *curproc->tf;
 -
-+  // curproc->T_start = ticks;  // set starting time
-   // Copy process state from proc.
-   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-     kfree(np->kstack);
-@@ -225,52 +226,150 @@ fork(void)
++  np->T_start = ticks;
++  np->prior = 10;   // set initial priority to 10 as the test program said
+   // Clear %eax so that fork returns 0 in the child.
+   np->tf->eax = 0;
+ 
+@@ -225,52 +228,150 @@ fork(void)
  // An exited process remains in the zombie state
  // until its parent calls wait() to find out it exited.
  void
@@ -111,24 +143,24 @@ index 806b1b1..e3748fa 100644
 +            curproc->ofile[fd] = 0;
 +        }
 +    }
-+
+ 
+-  if(curproc == initproc)
+-    panic("init exiting");
 +    begin_op();
 +    iput(curproc->cwd);
 +    end_op();
 +    curproc->cwd = 0;
-+
-+    acquire(&ptable.lock);
- 
--  if(curproc == initproc)
--    panic("init exiting");
-+    // Parent might be sleeping in wait().
-+    wakeup1(curproc->parent);
  
 -  // Close all open files.
 -  for(fd = 0; fd < NOFILE; fd++){
 -    if(curproc->ofile[fd]){
 -      fileclose(curproc->ofile[fd]);
 -      curproc->ofile[fd] = 0;
++    acquire(&ptable.lock);
++
++    // Parent might be sleeping in wait().
++    wakeup1(curproc->parent);
++
 +    // Pass abandoned children to init.
 +    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 +        if(p->parent == curproc){
@@ -269,7 +301,7 @@ index 806b1b1..e3748fa 100644
  {
    struct proc *p;
    int havekids, pid;
-@@ -295,6 +394,8 @@ wait(void)
+@@ -295,6 +396,8 @@ wait(void)
          p->name[0] = 0;
          p->killed = 0;
          p->state = UNUSED;
@@ -278,7 +310,7 @@ index 806b1b1..e3748fa 100644
          release(&ptable.lock);
          return pid;
        }
-@@ -311,6 +412,52 @@ wait(void)
+@@ -311,6 +414,52 @@ wait(void)
    }
  }
  
@@ -331,7 +363,7 @@ index 806b1b1..e3748fa 100644
  //PAGEBREAK: 42
  // Per-CPU process scheduler.
  // Each CPU calls scheduler() after setting itself up.
-@@ -332,24 +479,42 @@ scheduler(void)
+@@ -332,24 +481,43 @@ scheduler(void)
  
      // Loop over process table looking for process to run.
      acquire(&ptable.lock);
@@ -343,6 +375,7 @@ index 806b1b1..e3748fa 100644
 +      if(p->state != RUNNABLE || p == curr) //if not runnable or if it's the first proc, skip
          continue;
  
++      //curr->burst++;             // burst time
 +      if(p->prior < highest) {  // check current prior with highest
 +          highest = p->prior;   // assign higher(lower value) prior to highest
 +          curr->prior--;        // decrease the previous process's prior
@@ -380,7 +413,7 @@ index 806b1b1..e3748fa 100644
      release(&ptable.lock);
  
    }
-@@ -532,3 +697,9 @@ procdump(void)
+@@ -532,3 +700,9 @@ procdump(void)
      cprintf("\n");
    }
  }

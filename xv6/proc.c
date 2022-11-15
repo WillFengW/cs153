@@ -112,8 +112,8 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
-  p->prior = 10;   // set initial priority to 10 as the test program said
-  p->T_start = ticks;
+  //p->prior = 10;   // set initial priority to 10 as the test program said
+  //p->T_start = ticks;
   return p;
 }
 
@@ -185,12 +185,12 @@ fork(void)
   int i, pid;
   struct proc *np;
   struct proc *curproc = myproc();
-
+  //curproc->T_start = ticks;
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
   }
-  // curproc->T_start = ticks;  // set starting time
+
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -201,7 +201,8 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
+  np->T_start = ticks;
+  np->prior = 10;   // set initial priority to 10 as the test program said
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -487,6 +488,7 @@ scheduler(void)
       if(p->state != RUNNABLE || p == curr) //if not runnable or if it's the first proc, skip
         continue;
 
+      //curr->burst++;             // burst time
       if(p->prior < highest) {  // check current prior with highest
           highest = p->prior;   // assign higher(lower value) prior to highest
           curr->prior--;        // decrease the previous process's prior

@@ -18,10 +18,10 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
-
+  curproc->T_start = ticks;  // set starting time
   begin_op();
 
-  curproc->T_start = ticks;  // set starting time
+
   if((ip = namei(path)) == 0){
     end_op();
     cprintf("exec: fail\n");
@@ -100,6 +100,7 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;
